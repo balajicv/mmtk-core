@@ -28,6 +28,7 @@ pub enum PlanSelector {
     Immix,
     MarkCompact,
     StickyImmix,
+    MyGC,
 }
 
 /// MMTk option for perf events
