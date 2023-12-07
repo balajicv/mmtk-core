@@ -41,7 +41,8 @@ impl<VM: VMBinding> GCController<VM> {
         })
     }
 
-    pub fn run(&mut self, tls: VMWorkerThread) {
+    /// The main loop for the GC controller.
+    pub fn run(&mut self, tls: VMWorkerThread) -> ! {
         probe!(mmtk, gccontroller_run);
         // Initialize the GC worker for coordinator. We are not using the run() method from
         // GCWorker so we manually initialize the worker here.
@@ -130,12 +131,7 @@ impl<VM: VMBinding> GCController<VM> {
         self.scheduler.deactivate_all();
 
         // Tell GC trigger that GC ended - this happens before EndOfGC where we resume mutators.
-        self.mmtk
-            .get_plan()
-            .base()
-            .gc_trigger
-            .policy
-            .on_gc_end(self.mmtk);
+        self.mmtk.gc_trigger.policy.on_gc_end(self.mmtk);
 
         // Finalization: Resume mutators, reset gc states
         // Note: Resume-mutators must happen after all work buckets are closed.

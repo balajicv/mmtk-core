@@ -35,12 +35,10 @@ pub struct Immix<VM: VMBinding> {
     last_gc_was_defrag: AtomicBool,
 }
 
+/// The plan constraints for the immix plan.
 pub const IMMIX_CONSTRAINTS: PlanConstraints = PlanConstraints {
     moves_objects: crate::policy::immix::DEFRAG,
-    gc_header_bits: 2,
-    gc_header_words: 0,
-    num_specialized_scans: 1,
-    /// Max immix object size is half of a block.
+    // Max immix object size is half of a block.
     max_non_los_default_alloc_bytes: crate::policy::immix::MAX_IMMIX_OBJECT_SIZE,
     needs_prepare_mutator: false,
     ..PlanConstraints::default()
@@ -85,7 +83,10 @@ impl<VM: VMBinding> Plan for Immix<VM> {
 
     fn prepare(&mut self, tls: VMWorkerThread) {
         self.common.prepare(tls, true);
-        self.immix_space.prepare(true);
+        self.immix_space.prepare(
+            true,
+            crate::policy::immix::defrag::StatsForDefrag::new(self),
+        );
     }
 
     fn release(&mut self, tls: VMWorkerThread) {
@@ -163,10 +164,13 @@ impl<VM: VMBinding> Immix<VM> {
         scheduler: &GCWorkScheduler<VM>,
     ) {
         let in_defrag = immix_space.decide_whether_to_defrag(
-            plan.is_emergency_collection(),
+            plan.base().global_state.is_emergency_collection(),
             true,
-            plan.base().cur_collection_attempts.load(Ordering::SeqCst),
-            plan.base().is_user_triggered_collection(),
+            plan.base()
+                .global_state
+                .cur_collection_attempts
+                .load(Ordering::SeqCst),
+            plan.base().global_state.is_user_triggered_collection(),
             *plan.base().options.full_heap_system_gc,
         );
 

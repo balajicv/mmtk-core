@@ -34,6 +34,7 @@ pub struct StickyImmix<VM: VMBinding> {
     full_heap_gc_count: Arc<Mutex<EventCounter>>,
 }
 
+/// The plan constraints for the sticky immix plan.
 pub const STICKY_IMMIX_CONSTRAINTS: PlanConstraints = PlanConstraints {
     moves_objects: crate::policy::immix::DEFRAG || crate::policy::immix::PREFER_COPY_ON_NURSERY_GC,
     needs_log_bit: true,
@@ -108,7 +109,10 @@ impl<VM: VMBinding> Plan for StickyImmix<VM> {
     fn prepare(&mut self, tls: crate::util::VMWorkerThread) {
         if self.is_current_gc_nursery() {
             // Prepare both large object space and immix space
-            self.immix.immix_space.prepare(false);
+            self.immix.immix_space.prepare(
+                false,
+                crate::policy::immix::defrag::StatsForDefrag::new(self),
+            );
             self.immix.common.los.prepare(false);
         } else {
             self.full_heap_gc_count.lock().unwrap().inc();
@@ -283,6 +287,7 @@ impl<VM: VMBinding> crate::plan::generational::global::GenerationalPlanExt<VM> f
 
 impl<VM: VMBinding> StickyImmix<VM> {
     pub fn new(args: CreateGeneralPlanArgs<VM>) -> Self {
+        let full_heap_gc_count = args.stats.new_event_counter("majorGC", true, true);
         let plan_args = CreateSpecificPlanArgs {
             global_args: args,
             constraints: &STICKY_IMMIX_CONSTRAINTS,
@@ -305,7 +310,6 @@ impl<VM: VMBinding> StickyImmix<VM> {
                 mixed_age: true,
             },
         );
-        let full_heap_gc_count = immix.base().stats.new_event_counter("majorGC", true, true);
         Self {
             immix,
             gc_full_heap: AtomicBool::new(false),
@@ -321,6 +325,7 @@ impl<VM: VMBinding> StickyImmix<VM> {
             .immix
             .common
             .base
+            .global_state
             .user_triggered_collection
             .load(Ordering::SeqCst)
             && *self.immix.common.base.options.full_heap_system_gc
@@ -332,6 +337,7 @@ impl<VM: VMBinding> StickyImmix<VM> {
                 .immix
                 .common
                 .base
+                .global_state
                 .cur_collection_attempts
                 .load(Ordering::SeqCst)
                 > 1

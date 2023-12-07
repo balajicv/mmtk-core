@@ -23,7 +23,7 @@ pub(crate) use global::create_gc_worker_context;
 pub(crate) use global::create_mutator;
 pub(crate) use global::create_plan;
 pub use global::AllocationSemantics;
-pub(crate) use global::GcStatus;
+pub(crate) use global::CreateGeneralPlanArgs;
 pub(crate) use global::HasSpaces;
 pub use global::Plan;
 pub(crate) use global::PlanTraceObject;
@@ -34,7 +34,7 @@ pub use mutator_context::MutatorContext;
 
 mod plan_constraints;
 pub use plan_constraints::PlanConstraints;
-pub use plan_constraints::DEFAULT_PLAN_CONSTRAINTS;
+pub(crate) use plan_constraints::DEFAULT_PLAN_CONSTRAINTS;
 
 mod tracing;
 pub use tracing::{ObjectQueue, ObjectsClosure, VectorObjectQueue, VectorQueue};

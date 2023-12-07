@@ -50,6 +50,7 @@ pub struct GenImmix<VM: VMBinding> {
     pub last_gc_was_full_heap: AtomicBool,
 }
 
+/// The plan constraints for the generational immix plan.
 pub const GENIMMIX_CONSTRAINTS: PlanConstraints = PlanConstraints {
     // The maximum object size that can be allocated without LOS is restricted by the max immix object size.
     // This might be too restrictive, as our default allocator is bump pointer (nursery allocator) which
@@ -123,7 +124,10 @@ impl<VM: VMBinding> Plan for GenImmix<VM> {
         let full_heap = !self.gen.is_current_gc_nursery();
         self.gen.prepare(tls);
         if full_heap {
-            self.immix_space.prepare(full_heap);
+            self.immix_space.prepare(
+                full_heap,
+                crate::policy::immix::defrag::StatsForDefrag::new(self),
+            );
         }
     }
 
